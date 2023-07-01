@@ -3,9 +3,6 @@
 
 void IMU::init(){
     Wire.begin();
-    EEPROM.begin();
-    EEPROM.get(0, m_min);
-    EEPROM.get(sizeof(m_min)+1, m_max);
     writeAccReg(0x23, 0x08);
     writeAccReg(0x20, 0x47);
     writeMagReg(0x00, 0x0C);
@@ -31,7 +28,6 @@ void IMU::writeMagReg(byte reg, byte value)
 
 void IMU::update() {
     unsigned long curr_time = millis();
-    heading_res = heading((vector<int>){0, -1, 0});
     if (winp_c < 6 && listen_wire && Wire.available()){
         wire_inp[winp_c] = Wire.read();
         winp_c+=1;
@@ -45,13 +41,16 @@ void IMU::update() {
         requestAcc();
         AM_stat = 1;
     }else if(AM_stat == 1 && winp_c == 6){
+        acc_ready = true;
         readAcc();
         requestMag();
         AM_stat = 2;
     }else if(AM_stat == 2 && winp_c == 6){
         readMag();
+        mag_ready = true;
         AM_stat = 0;
     }
+    heading_res = heading((vector<int>){0, -1, 0});
 
 }
 
@@ -126,12 +125,30 @@ float IMU::heading(vector<int> from)
     temp_m.z -= ((int32_t)m_min.z + m_max.z) / 2;
 
     // compute E and N
-    vector<float> E;
-    vector<float> N;
+    vector<double> E;
+    vector<double> N;
     vector_cross(&temp_m, &a, &E);
     vector_normalize(&E);
     vector_cross(&a, &E, &N);
-    vector_normalize(&N);
+    vector_normalize(&N);/*
+Serial.print("a: ");
+ Serial.print(a.x);
+  Serial.print('\t');
+  Serial.print(a.y);
+  Serial.print('\t');
+  Serial.print(a.z);
+  Serial.print("\t E: ");
+ Serial.print(E.x);
+  Serial.print('\t');
+  Serial.print(E.y);
+  Serial.print('\t');
+  Serial.print(E.z);
+    Serial.print("\t N: ");
+ Serial.print(N.x);
+  Serial.print('\t');
+  Serial.print(N.y);
+  Serial.print('\t');
+  Serial.println(N.z);*/
 
     // compute heading
     float heading = atan2(vector_dot(&E, &from), vector_dot(&N, &from)) * 180 / PI;
@@ -160,6 +177,4 @@ void IMU::calibrate() {
     m_max.x = running_max.x;
     m_max.y = running_max.y;
     m_max.z = running_max.z;
-    EEPROM.put(0, m_min);
-    EEPROM.put(sizeof(m_min)+1, m_max);
 }

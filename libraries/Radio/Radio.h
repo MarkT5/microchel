@@ -46,7 +46,7 @@ public:
 
     void update();
 
-    void check_radio(void);
+    bool check_radio(void);
 
     void init();
 };

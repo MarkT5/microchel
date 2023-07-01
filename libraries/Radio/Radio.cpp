@@ -26,6 +26,7 @@ void Radio::update() {
     unsigned long curr_time = millis();
     if (role == RECEIVER) {
         if (curr_time-time > 300) {
+            time = curr_time;
             reset();
         }
     } else {
@@ -41,12 +42,13 @@ void Radio::update() {
     }
 }
 
-void Radio::check_radio() {
+bool Radio::check_radio() {
     bool tx, fail, rx;                 // declare variables to store IRQ flags
     radio.whatHappened(tx, fail, rx);  // What happened?
     if (fail) {
         last_status = false;
         fail_counter+=1;
+        return false;
     }
     if (rx) {
         last_status = true;
@@ -59,5 +61,6 @@ void Radio::check_radio() {
             msg_delivered = true;
             radio.read(recv_ptr, recv_size);
         }
+        return true;
     }
 }

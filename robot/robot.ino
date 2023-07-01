@@ -2,6 +2,7 @@
 #include "MotorControl.h"
 #include "directADC.h"
 #include "IMU.h"
+#include "EEPROM.h"
 
 Radio radio(RECEIVER, 0x7878787878LL, 7, 8);
 IMU imu;
@@ -63,7 +64,20 @@ RSP rsp;
 void setup() {
   Serial.begin(115200);
   imu.init();
-
+  EEPROM.begin();
+  EEPROM.get(0, imu.m_min);
+  EEPROM.get(sizeof(imu.m_min)+1, imu.m_max);
+  Serial.print(imu.m_min.x);
+  Serial.print(' ');
+  Serial.print(imu.m_min.y);
+  Serial.print(' ');
+  Serial.print(imu.m_min.z);
+  Serial.print(' ');
+  Serial.print(imu.m_max.x);
+  Serial.print(' ');
+  Serial.print(imu.m_max.y);
+  Serial.print(' ');
+  Serial.println(imu.m_max.z);
   //ADC (battery)
   ADC_enable(); // вызывается обязательно
   ADC_setPrescaler(64); // без вызова - делитель 2
@@ -103,14 +117,28 @@ void loop() {
   }else if (ang_diff < -180){
     ang_diff+=360;
   }
+  if (!battery.check()){
+    motor1.beep(30, 100);
+    delay(100);
+    motor2.beep(30, 100);
+    delay(100);
+    motor1.beep(30, 100);
+    delay(100);
+    motor2.beep(30, 100);
+    delay(100);
+    motor1.beep(30, 100);
+    delay(100);
+    motor2.beep(30, 100);
+    delay(100);
+  }
   
-  Serial.print(curr_ang);
-  Serial.print('\t');
-  Serial.print(target_ang);
-  Serial.print('\t');
-  Serial.print(ang_diff);
-  Serial.print('\t');
-  Serial.println(ang_int);
+  // Serial.print(imu.m.x);
+  // Serial.print('\t');
+  // Serial.print(imu.m.y);
+  // Serial.print('\t');
+  // Serial.print(imu.m.z);
+  // Serial.print('\t');
+  // Serial.println(imu.m.z);
 
   if (!isnanf(ang_diff)){
     ang_int+=ang_diff*0.01;
@@ -120,8 +148,8 @@ void loop() {
       ang_int=-100;
     }
   }
-  if (abs(ang_diff)>60 || abs(ang_diff)<5){
-    ang_int=0;
+  if(abs(ang_diff)<5){
+      ang_int = 0;
   }
   
   rsp.counter+=1;
@@ -136,22 +164,21 @@ void loop() {
   }else if (rsp.heading < -180){
     rsp.heading+=360;
   }
+
   if (!isnanf(curr_ang)){
-    // Serial.print(curr_ang);
-    // Serial.print('\t');
-    // Serial.print(rsp.heading);
-    // Serial.print('\t');
-    // Serial.println(micros()-last_time);
-    if(curr_ang != rsp.heading){
-      float res = curr_ang-rsp.heading;
-      if (res > 180){
-        res = 360 - res;
-      }else if (res < -180){
-        res = -360 - res;
+    if(imu.mag_ready and imu.acc_ready and rsp.heading != curr_ang){
+      imu.mag_ready = false;
+      imu.acc_ready = false;
+      float res = rsp.heading - curr_ang;
+      if (curr_ang > 90 and rsp.heading < -90){
+        res = 360 + rsp.heading - curr_ang;
+      }else if (curr_ang < -90 and rsp.heading > 90){
+        res = -360 + rsp.heading - curr_ang;
       }
       delta_ang = res*12000/(micros()-last_time);
     }
   }
+  
   last_time = micros();
   curr_ang = imu.heading_res;
   if (curr_ang > 180){
@@ -165,7 +192,7 @@ void loop() {
   float fov = (int(msg.joystick.X)-502)/2.0;
   float side = (int(msg.joystick.Y)-497)/2.0;
   if (abs(side/100.0)>0.05){
-    target_ang += side/100.0;
+    target_ang += side/1000.0;
   }
 
   if (target_ang > 180){
@@ -176,12 +203,12 @@ void loop() {
   
   //motor1.write(fov-side);
   //motor2.write(fov+side);
-  if (abs(ang_diff)>5){
-    motor1.write(fov+ang_diff*0.9+ang_int+delta_ang);
-    motor2.write(-fov+ang_diff*0.9+ang_int+delta_ang);
+  if (abs(ang_diff)>1){
+    motor1.write(fov+min(max(-70, ang_diff*0.6+ang_int*0.5+delta_ang*2), 70));
+    motor2.write(-fov+min(max(-70, ang_diff*0.6+ang_int*0.5+delta_ang*2), 70));
   }else{
-    motor1.write(fov);
-    motor2.write(-fov);
+   motor1.write(fov);
+   motor2.write(-fov);
   }
   rsp.curr_ang = curr_ang;
   rsp.target_ang = target_ang;
@@ -197,6 +224,19 @@ void calibrate_imu(){
   motor1.beep(30, 500);
   delay(100);
   imu.calibrate();
+  EEPROM.put(0, imu.m_min);
+  EEPROM.put(sizeof(imu.m_min)+1, imu.m_max);
+  Serial.print(imu.m_min.x);
+  Serial.print(' ');
+  Serial.print(imu.m_min.y);
+  Serial.print(' ');
+  Serial.print(imu.m_min.z);
+  Serial.print(' ');
+  Serial.print(imu.m_max.x);
+  Serial.print(' ');
+  Serial.print(imu.m_max.y);
+  Serial.print(' ');
+  Serial.println(imu.m_max.z);
   motor1.beep(30, 500);
   delay(100);
   motor1.beep(30, 500);

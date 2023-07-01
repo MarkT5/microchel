@@ -115,5 +115,7 @@ void adcReady(){
 }
 
 void rcheck(){
-  radio.check_radio();
+  if (!radio.check_radio()){
+    Serial.println("radio fail");
+  }
 }

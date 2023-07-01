@@ -1,7 +1,5 @@
 #include <Wire.h>
 #include <Arduino.h>
-#include <EEPROM.h>
-//#include <typeinfo>
 
 #define acc_address 0b0011001
 #define mag_address 0b0011110
@@ -16,8 +14,6 @@ public:
     uint8_t AM_stat = 0;
     vector<int16_t> a; // accelerometer readings
     vector<int16_t> m; // magnetometer readings
-    vector<int16_t> m_min =  {  -610,   -713,    -25};
-    vector<int16_t> m_max = {  +459,   +341,    +10};
     byte wire_inp[6];
     uint8_t winp_c = 0;
     bool listen_wire = true;
@@ -26,7 +22,11 @@ public:
 
 
 public:
+    vector<int16_t> m_min =  {  -610,   -713,    -25};
+    vector<int16_t> m_max = {  +459,   +341,    +10};
     float heading_res = 0;
+    bool mag_ready = false;
+    bool acc_ready = false;
 
     void init();
     void writeAccReg(byte reg, byte value);
@@ -38,9 +38,9 @@ public:
     void readMag();
     void update();
     void calibrate();
-    void vector_normalize(vector<float> *a)
+    void vector_normalize(vector<double> *a)
     {
-        float mag = sqrt(vector_dot(a, a));
+        double mag = sqrt(vector_dot(a, a))/16384;
         a->x /= mag;
         a->y /= mag;
         a->z /= mag;
@@ -55,7 +55,7 @@ public:
         out->z = (a->x * b->y) - (a->y * b->x);
     }
 
-    template <typename Ta, typename Tb> float vector_dot(const vector<Ta> *a, const vector<Tb> *b)
+    template <typename Ta, typename Tb> double vector_dot(const vector<Ta> *a, const vector<Tb> *b)
     {
         return (a->x * b->x) + (a->y * b->y) + (a->z * b->z);
     }
