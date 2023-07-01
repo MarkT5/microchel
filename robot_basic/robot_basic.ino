@@ -6,7 +6,7 @@
 
 Radio radio(RECEIVER, 0x7878787878LL, 7, 8);
 IMU imu;
-MotorControl motor1(A0, A1, 6);
+MotorControl motor1(A1, A0, 6);
 MotorControl motor2(4, 3, 5);
 
 struct MSG{
@@ -49,11 +49,13 @@ MSG msg;
 RSP rsp;
 
 void setup() {
-  Serial.begin(115200);
+  // Serial.begin(115200);
   imu.init();
   EEPROM.begin();
   EEPROM.get(0, imu.m_min);
   EEPROM.get(sizeof(imu.m_min)+1, imu.m_max);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
 
   //ADC (battery)
   ADC_enable(); // вызывается обязательно
@@ -96,20 +98,20 @@ void loop() {
   }
 
   //motor1.write(100);
-  analogWrite(9, max(100, msg.servo1/4)); //400 - 1023
-  analogWrite(10, max(73, min(212, msg.servo2/4)));// 290 - 850
+  analogWrite(9, max(100, min(255, msg.servo2))); //400 - 1023
+  analogWrite(10, max(73, min(212, msg.servo1)));// 290 - 850
   if (radio_status){
-    Serial.print(msg.motor1);
-    Serial.print('\t');
-    Serial.print(msg.motor2);
-    Serial.print('\t');
-    Serial.print(msg.servo1);
-    Serial.print('\t');
-    Serial.println(msg.servo2);
-    // motor1.write(msg.motor1);
-    // motor2.write(msg.motor2);
+    // Serial.print(msg.motor1);
+    // Serial.print('\t');
+    // Serial.print(msg.motor2);
+    // Serial.print('\t');
+    // Serial.print(msg.servo1);
+    // Serial.print('\t');
+    // Serial.println( max(290, min(850, msg.servo2)));
+    motor1.write(msg.motor1);
+    motor2.write(msg.motor2);
   }else{
-    Serial.println("fail");
+    // Serial.println("fail");
     motor1.write(0);
     motor2.write(0);
   }
