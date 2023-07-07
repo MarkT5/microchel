@@ -27,6 +27,9 @@ public:
     Radio(bool r, uint32_t p, uint8_t pin1=9, uint8_t pin2=10) : role{r}, pipe{p} {
         radio = RF24(pin1, pin2);
     }
+    void changePipe(uint32_t pipe){
+        this->pipe = pipe;
+    }
 
     void setRecvVar(void *ptr, uint8_t size) {
         recv_ptr = ptr;

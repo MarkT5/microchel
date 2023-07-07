@@ -37,7 +37,7 @@ struct RSP{
 class Battery{
   public:
     float cel[2] = {0, 0};
-    float low = 3.5;
+    float low = 3.8;
     float floor = 3.2;
     void updateCel1(uint16_t val){
       cel[0] = val*5.0/1024-0.1;
@@ -46,7 +46,7 @@ class Battery{
       cel[1] = val*5.0/1024*2-cel[0]-0.2;
     }
     bool check(){
-      if (cel[0] < low || cel[0] < low){
+      if (cel[0] < low || cel[1] < low){
         return false;
       }else{
         return true;
@@ -62,22 +62,11 @@ MSG msg;
 RSP rsp;
 
 void setup() {
-  Serial.begin(115200);
+  //Serial.begin(115200);
   imu.init();
   EEPROM.begin();
   EEPROM.get(0, imu.m_min);
   EEPROM.get(sizeof(imu.m_min)+1, imu.m_max);
-  Serial.print(imu.m_min.x);
-  Serial.print(' ');
-  Serial.print(imu.m_min.y);
-  Serial.print(' ');
-  Serial.print(imu.m_min.z);
-  Serial.print(' ');
-  Serial.print(imu.m_max.x);
-  Serial.print(' ');
-  Serial.print(imu.m_max.y);
-  Serial.print(' ');
-  Serial.println(imu.m_max.z);
   //ADC (battery)
   ADC_enable(); // вызывается обязательно
   ADC_setPrescaler(64); // без вызова - делитель 2
@@ -87,7 +76,7 @@ void setup() {
   ADC_startConvert();
   
   // RADIO
-  Serial.println("ReceiverTester ON");
+  //Serial.println("ReceiverTester ON");
   radio.setRecvVar(&msg, sizeof(msg));
   radio.setSendVar(&rsp, sizeof(rsp));
   radio.init();
@@ -130,6 +119,7 @@ void loop() {
     delay(100);
     motor2.beep(30, 100);
     delay(100);
+    return;
   }
   
   // Serial.print(imu.m.x);
@@ -139,8 +129,11 @@ void loop() {
   // Serial.print(imu.m.z);
   // Serial.print('\t');
   // Serial.println(imu.m.z);
+//Serial.println(battery.cel[0]);
+//Serial.println(battery.cel[1]);
 
   if (!isnanf(ang_diff)){
+    
     ang_int+=ang_diff*0.01;
     if (ang_int > 100){
       ang_int=100;
@@ -226,17 +219,6 @@ void calibrate_imu(){
   imu.calibrate();
   EEPROM.put(0, imu.m_min);
   EEPROM.put(sizeof(imu.m_min)+1, imu.m_max);
-  Serial.print(imu.m_min.x);
-  Serial.print(' ');
-  Serial.print(imu.m_min.y);
-  Serial.print(' ');
-  Serial.print(imu.m_min.z);
-  Serial.print(' ');
-  Serial.print(imu.m_max.x);
-  Serial.print(' ');
-  Serial.print(imu.m_max.y);
-  Serial.print(' ');
-  Serial.println(imu.m_max.z);
   motor1.beep(30, 500);
   delay(100);
   motor1.beep(30, 500);
